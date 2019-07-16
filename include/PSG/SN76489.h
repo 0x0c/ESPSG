@@ -1,6 +1,6 @@
 #pragma once
 
-#include <PSG.h>
+#include <PSG/PSG.h>
 
 namespace m2d
 {
@@ -9,7 +9,7 @@ namespace ESP32
 class SN76489 : PSG
 {
 private:
-	static unsigned int tp_sn[] = {
+	unsigned int tp_sn[128] = {
 	956, 902, 851, 804, 758, 716, 676, 638, 602, 568, 536, 506, 478, 451, 426, 402, 379, 358, 338, 319, 301, 284, 268, 253, 239, 225, 213, 201, 190, 179, 169, 159, 150, 142, 134, 127, 119, 113, 106, 100, 95, 89, 84, 80, 75, 71, 6, 1012, 956, 902, 851, 804, 758, 716, 676, 638, 602, 568, 536, 506, 478, 451, 426, 402, 379, 358, 338, 319, 301, 284, 268, 253, 239, 225, 213, 201, 190, 179, 169, 159, 150, 142, 134, 127, 119, 113, 106, 100, 95, 89, 84, 80, 75, 71, 67, 63, 60, 56, 53, 50, 47, 45, 42, 40, 38, 36, 34, 32, 30, 28, 27, 25, 24, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 13, 12, 11, 11, 10
 	};
 
@@ -24,24 +24,24 @@ public:
 	{
 		gpio_config_t io_conf;
 		uint64_t bit_mask = (1ULL<<latchPin) | (1ULL<<clockPin) | (1ULL<<dataPin) | (1ULL<<WEPin) | (1ULL<<CEPin);
-		io_conf.intr_type = GPIO_PIN_INTR_DISABLE;
+		io_conf.intr_type = (gpio_int_type_t)GPIO_PIN_INTR_DISABLE;
 		io_conf.mode = GPIO_MODE_OUTPUT;
 		io_conf.pin_bit_mask = bit_mask;
-		io_conf.pull_down_en = 0;
-		io_conf.pull_up_en = 0;
+		io_conf.pull_down_en = (gpio_pulldown_t)0;
+		io_conf.pull_up_en = (gpio_pullup_t)0;
 		gpio_config(&io_conf);
 	}
 
-	void setNote(uint8_t channel, uint8_t notenum)
+	void setNote(PSG::Channel channel, uint8_t noteNumber)
 	{
-		unsigned int t = tp_sn[notenum];
+		unsigned int t = this->tp_sn[noteNumber];
 		uint8_t tonedata1 = 0x80 | (channel << 5) | (t & 0xf);
 		writeData(tonedata1);
 		uint8_t tonedata2 = (t >> 4) & 0x3f;
 		writeData(tonedata2);
 	}
 
-	void setVolume(uint8_t channel, uint8_t volume)
+	void setVolume(PSG::Channel channel, uint8_t volume)
 	{
 		uint8_t vol;
 		vol = 0x90 | (channel << 5) | ((~volume) & 0xf);
@@ -80,10 +80,10 @@ public:
 
 	void clear()
 	{
-		setVolume(0, 0);
-		setVolume(1, 0);
-		setVolume(2, 0);
-		setVolume(3, 0);
+		setVolume(PSG::Channel::c0, 0);
+		setVolume(PSG::Channel::c1, 0);
+		setVolume(PSG::Channel::c2, 0);
+		setVolume(PSG::Channel::c3, 0);
 	}
 };
 }

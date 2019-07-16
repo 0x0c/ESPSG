@@ -16,9 +16,6 @@ public:
 
 	typedef enum
 	{
-		both = 0,
-        left = 1,
-        right = 2,
 		c0 = 0,
 		c1 = 1,
 		c2 = 2,
@@ -27,16 +24,7 @@ public:
 		c5 = 5
 	} Channel;
 
-	virtual void setNote(PSG::Channel channel, uint8_t noteNumber) = 0;
-	virtual void setVolume(PSG::Channel channel, uint8_t volume) = 0;
-	virtual void setEnvelope(PSG::Channel envelopeChannel, uint8_t mode) = 0;
-	virtual void setEnvelopeTime(uint8_t envelopeTime) = 0;
-	virtual void latchMode() = 0;
-	virtual void writeMode() = 0;
-	virtual void invalidate() = 0;
-
 protected:
-	virtual void writeData(uint8_t address, uint8_t data) = 0;
 	static void shiftOut(uint8_t dataPin, uint8_t clockPin, PSG::BitOrder bitOrder, uint8_t val) {
 		for(uint8_t i = 0; i < 8; i++) {
 			if(bitOrder == BitOrder::LSBFIRST) {

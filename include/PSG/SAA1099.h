@@ -1,6 +1,6 @@
 #pragma once
 
-#include <PSG.h>
+#include <PSG/PSG.h>
 
 namespace m2d
 {
@@ -45,13 +45,13 @@ public:
 		uint8_t volL = 0xff & volume;
 		uint8_t volR = 0xff & (volume << 4);
 		switch (channel) {
-			case left:
+			case c0:
 				writeData(channel, volL);
 				break;
-			case right:
+			case c1:
 				writeData(channel, volR);
 				break;
-			case both:
+			case c2:
 				writeData(channel, volume);
 				break;
 			default:
@@ -106,26 +106,6 @@ public:
 	void setEnvelope(PSG::Channel envelopeChannel, uint8_t mode)
 	{
 		writeData(0x18 + envelopeChannel, mode);
-	}
-
-	void setEnvelopeTime(uint8_t envelopeTime)
-	{
-
-	}
-
-	void latchMode()
-	{
-
-	}
-	
-	void writeMode()
-	{
-
-	}
-
-	void invalidate()
-	{
-		
 	}
 
 	void soundEnable()
