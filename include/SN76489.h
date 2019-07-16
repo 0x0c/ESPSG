@@ -1,20 +1,22 @@
 #pragma once
 
+#include <PSG.h>
+
 namespace m2d
 {
 namespace ESP32
 {
-class SN76489
+class SN76489 : PSG
 {
 private:
 	static unsigned int tp_sn[] = {
 	956, 902, 851, 804, 758, 716, 676, 638, 602, 568, 536, 506, 478, 451, 426, 402, 379, 358, 338, 319, 301, 284, 268, 253, 239, 225, 213, 201, 190, 179, 169, 159, 150, 142, 134, 127, 119, 113, 106, 100, 95, 89, 84, 80, 75, 71, 6, 1012, 956, 902, 851, 804, 758, 716, 676, 638, 602, 568, 536, 506, 478, 451, 426, 402, 379, 358, 338, 319, 301, 284, 268, 253, 239, 225, 213, 201, 190, 179, 169, 159, 150, 142, 134, 127, 119, 113, 106, 100, 95, 89, 84, 80, 75, 71, 67, 63, 60, 56, 53, 50, 47, 45, 42, 40, 38, 36, 34, 32, 30, 28, 27, 25, 24, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 13, 12, 11, 11, 10
 	};
 
-	int latchPin, clockPin, dataPin, WEPin, CEPin;
+	gpio_num_t latchPin, clockPin, dataPin, WEPin, CEPin;
 
 public:
-	SN76489(int latch, int clock, int data, int WE, int CE) : latchPin(latch)
+	SN76489(gpio_num_t latch, gpio_num_t clock, gpio_num_t data, gpio_num_t WE, gpio_num_t CE) : latchPin(latch)
     , clockPin(clock)
     , dataPin(data)
     , WEPin(WE)
@@ -30,25 +32,25 @@ public:
 		gpio_config(&io_conf);
 	}
 
-	void setNote(byte channel, byte notenum)
+	void setNote(uint8_t channel, uint8_t notenum)
 	{
 		unsigned int t = tp_sn[notenum];
-		byte tonedata1 = 0x80 | (channel << 5) | (t & 0xf);
+		uint8_t tonedata1 = 0x80 | (channel << 5) | (t & 0xf);
 		writeData(tonedata1);
-		byte tonedata2 = (t >> 4) & 0x3f;
+		uint8_t tonedata2 = (t >> 4) & 0x3f;
 		writeData(tonedata2);
 	}
 
-	void setVolume(byte channel, byte volume)
+	void setVolume(uint8_t channel, uint8_t volume)
 	{
-		byte vol;
+		uint8_t vol;
 		vol = 0x90 | (channel << 5) | ((~volume) & 0xf);
 		writeData(vol);
 	}
 
-	void setNoise(byte fb, byte f1, byte f0)
+	void setNoise(uint8_t fb, uint8_t f1, uint8_t f0)
 	{
-		byte data = 0xd0 | (fb << 2) | (f1 << 1) | f0;
+		uint8_t data = 0xd0 | (fb << 2) | (f1 << 1) | f0;
 		writeData(data);
 	}
 
@@ -66,7 +68,7 @@ public:
 		delayMicroseconds(20);
 	}
 
-	void writeData(byte data)
+	void writeData(uint8_t data)
 	{
 		modeWrite();
 		gpio_set_level(latchPin, 0);

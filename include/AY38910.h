@@ -1,14 +1,16 @@
 #pragma once
 
+#include <PSG.h>
+
 namespace m2d
 {
 class AY38910 : PSG
 {
 private:
-	int latchPin, clockPin, dataPin, BC1Pin, BCDIRPin;
+	gpio_num_t latchPin, clockPin, dataPin, BC1Pin, BCDIRPin;
 	
 public:
-	AY38910(int latch, int clock, int data, int BC1, int BCDIR) : latchPin(latch)
+	AY38910(gpio_num_t latch, gpio_num_t clock, gpio_num_t data, gpio_num_t BC1, gpio_num_t BCDIR) : latchPin(latch)
     , clockPin(clock)
     , dataPin(data)
     , BC1Pin(BC1)

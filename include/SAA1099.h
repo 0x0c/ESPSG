@@ -1,16 +1,18 @@
 #pragma once
 
+#include <PSG.h>
+
 namespace m2d
 {
 namespace ESP32
 {
-class SAA1099
+class SAA1099 : PSG
 {
 private:
-	int latchPin, clockPin, dataPin, WEPin, CSPin, azPin;
+	gpio_num_t latchPin, clockPin, dataPin, WEPin, CSPin, azPin;
 
 public:
-	SAA1099(int latch, int clock, int data, int WE, int CS, int AZ) : latchPin(latch)
+	SAA1099(gpio_num_t latch, gpio_num_t clock, gpio_num_t data, gpio_num_t WE, gpio_num_t CS, gpio_num_t AZ) : latchPin(latch)
     , clockPin(clock)
     , dataPin(data)
     , WEPin(WE)
@@ -18,90 +20,112 @@ public:
     , azPin(AZ)
 	{
 		gpio_config_t io_conf;
-		uint64_t bit_mask = (1ULL<<latchPin) | (1ULL<<clockPin) | (1ULL<<dataPin) | (1ULL<<WEPin) | (1ULL<<CEPin) | (1ULL<<azPin);
-		io_conf.intr_type = GPIO_PIN_INTR_DISABLE;
+		uint64_t bit_mask = (1ULL<<latchPin) | (1ULL<<clockPin) | (1ULL<<dataPin) | (1ULL<<WEPin) | (1ULL<<CSPin) | (1ULL<<azPin);
+		io_conf.intr_type = (gpio_int_type_t)GPIO_PIN_INTR_DISABLE;
 		io_conf.mode = GPIO_MODE_OUTPUT;
 		io_conf.pin_bit_mask = bit_mask;
-		io_conf.pull_down_en = 0;
-		io_conf.pull_up_en = 0;
+		io_conf.pull_down_en = (gpio_pulldown_t)0;
+		io_conf.pull_up_en = (gpio_pullup_t)0;
 		gpio_config(&io_conf);
 		gpio_set_level(CSPin, 0);
 		reset();
 	}
 
-	void setNote(byte channel, byte notenum)
+	void setNote(PSG::Channel channel, uint8_t noteNumber)
 	{
-		byte o = (note / 12) - 1;
-		byte note_val = note - ((o + 1) * 12);
-		byte note_addr[] = { 5, 32, 60, 85, 110, 132, 153, 173, 192, 210, 227, 243 };
+		uint8_t o = (noteNumber / 12) - 1;
+		uint8_t note_val = noteNumber - ((o + 1) * 12);
+		uint8_t note_addr[] = { 5, 32, 60, 85, 110, 132, 153, 173, 192, 210, 227, 243 };
 		setOctave(channel, o);
 		setFreq(channel, note_addr[note_val]);
 	}
 
-	void setVolume(byte channel, byte volume, byte side)
+	void setVolume(PSG::Channel channel, uint8_t volume)
 	{
-		byte volL = 0xff & volume;
-		byte volR = 0xff & (volume << 4);
-		switch (side) {
-			case 0:
+		uint8_t volL = 0xff & volume;
+		uint8_t volR = 0xff & (volume << 4);
+		switch (channel) {
+			case left:
 				writeData(channel, volL);
 				break;
-			case 1:
+			case right:
 				writeData(channel, volR);
 				break;
-			case 2:
+			case both:
 				writeData(channel, volume);
+				break;
+			default:
 				break;
 		}
 	}
 
-	void setFreq(byte channel, byte freq)
+	void setFreq(PSG::Channel channel, uint8_t freq)
 	{
 		writeData((0x08 | channel), freq);
 	}
 
-	void setOctave(byte channel, byte octave)
+	void setOctave(PSG::Channel channel, uint8_t octave)
 	{
 		switch (channel) {
-			case 0:
+			case c0:
 				writeData(0x10, octave);
 				break;
-			case 1:
+			case c1:
 				writeData(0x10, octave << 4 & 0xf0);
 				break;
-			case 2:
+			case c2:
 				writeData(0x11, octave);
 				break;
-			case 3:
+			case c3:
 				writeData(0x11, octave << 4 & 0xf0);
 				break;
-			case 4:
+			case c4:
 				writeData(0x12, octave);
 				break;
-			case 5:
+			case c5:
 				writeData(0x12, octave << 4 & 0xf0);
 				break;
 		}
 	}
 	
-	void setFreqEnable(byte channelbit)
+	void setFreqEnable(uint8_t channelbit)
 	{
 		writeData(0x14, channelbit & 0xff);
 	}
 
-	void setNoiseEnable(byte channelbit)
+	void setNoiseEnable(uint8_t channelbit)
 	{
 		writeData(0x15, channelbit & 0xff);
 	}
 
-	void setNoise(byte noiseChannel, byte mode)
+	void setNoise(PSG::Channel noiseChannel, uint8_t mode)
 	{
 		writeData(0x16, mode << ((noiseChannel << 2) & 0x33));
 	}
 
-	void setEnvelope(byte envelopeChannel, byte mode)
+	void setEnvelope(PSG::Channel envelopeChannel, uint8_t mode)
 	{
 		writeData(0x18 + envelopeChannel, mode);
+	}
+
+	void setEnvelopeTime(uint8_t envelopeTime)
+	{
+
+	}
+
+	void latchMode()
+	{
+
+	}
+	
+	void writeMode()
+	{
+
+	}
+
+	void invalidate()
+	{
+		
 	}
 
 	void soundEnable()
@@ -129,18 +153,18 @@ public:
 		gpio_set_level(WEPin, 1);
 	}
 
-	void writeData(byte address, byte data)
+	void writeData(uint8_t address, uint8_t data)
 	{
 		gpio_set_level(azPin, 1);
 		modeWrite();
 		gpio_set_level(latchPin, 0);
-		shiftOut(dataPin, clockPin, MSBFIRST, address);
+		shiftOut(dataPin, clockPin, PSG::BitOrder::MSBFIRST, address);
 		gpio_set_level(latchPin, 1);
 		modeInactive();
 		gpio_set_level(azPin, 0);
 		modeWrite();
 		gpio_set_level(latchPin, 0);
-		shiftOut(dataPin, clockPin, MSBFIRST, data);
+		shiftOut(dataPin, clockPin, PSG::BitOrder::MSBFIRST, data);
 		gpio_set_level(latchPin, 1);
 		modeInactive();
 	}
