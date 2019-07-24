@@ -1,6 +1,6 @@
+#include <PSG/AY38910.h>
 #include <PSG/SAA1099.h>
 #include <PSG/SN76489.h>
-#include <PSG/AY38910.h>
 
 extern "C" {
 void app_main();
