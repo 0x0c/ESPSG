@@ -23,7 +23,7 @@ namespace ESP32
 			    , dataPin(data)
 			    , BC1Pin(BC1)
 			    , BCDIRPin(BCDIR)
-			    , RSTRPin(RST)
+			    , RSTPin(RST)
 			{
 				gpio_config_t io_conf;
 				uint64_t bit_mask = (1ULL << latchPin) | (1ULL << clockPin) | (1ULL << dataPin) | (1ULL << BC1Pin) | (1ULL << BCDIRPin) | (1ULL << RSTPin);
@@ -68,34 +68,40 @@ namespace ESP32
 			void latchMode()
 			{
 				gpio_set_level(BC1Pin, 1);
+				delayMicroseconds(10);
 				gpio_set_level(BCDIRPin, 1);
+				delayMicroseconds(10);
 			}
 
 			void writeMode()
 			{
 				gpio_set_level(BC1Pin, 0);
+				delayMicroseconds(10);
 				gpio_set_level(BCDIRPin, 1);
+				delayMicroseconds(10);
 			}
 
-			void invalidate()
+			void inactive()
 			{
 				gpio_set_level(BC1Pin, 0);
+				delayMicroseconds(10);
 				gpio_set_level(BCDIRPin, 0);
+				delayMicroseconds(10);
 			}
 
 			void writeData(uint8_t address, uint8_t data)
 			{
-				invalidate();
+				inactive();
 				gpio_set_level(latchPin, 0);
 				shiftOut(dataPin, clockPin, MSBFIRST, address);
 				gpio_set_level(latchPin, 1);
 				latchMode();
-				invalidate();
+				inactive();
 				writeMode();
 				gpio_set_level(latchPin, 0);
 				shiftOut(dataPin, clockPin, MSBFIRST, data);
 				gpio_set_level(latchPin, 1);
-				invalidate();
+				inactive();
 			}
 		};
 	}

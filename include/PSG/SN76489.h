@@ -67,14 +67,14 @@ namespace ESP32
 			{
 				gpio_set_level(CEPin, 0);
 				gpio_set_level(WEPin, 0);
-				delayMicroseconds(20);
+				delayMicroseconds(50);
 			}
 
 			void modeInactive()
 			{
 				gpio_set_level(CEPin, 1);
 				gpio_set_level(WEPin, 1);
-				delayMicroseconds(20);
+				delayMicroseconds(50);
 			}
 
 			void writeData(uint8_t data)

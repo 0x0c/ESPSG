@@ -28,16 +28,6 @@ namespace ESP32
 				WaveI = 0b1111
 			};
 
-			enum NoiseEnable : uint8_t
-			{
-				NE0 = 0b00000001,
-				NE1 = 0b00000010,
-				NE2 = 0b00000100,
-				NE3 = 0b00001000,
-				NE4 = 0b00010000,
-				NE5 = 0b00100000,
-			};
-
 			enum OutputSide : uint8_t
 			{
 				Left = 0,
