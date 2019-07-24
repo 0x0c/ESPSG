@@ -34,6 +34,8 @@ namespace ESP32
 				io_conf.pull_up_en = (gpio_pullup_t)0;
 				gpio_config(&io_conf);
 
+				gpio_set_level(RSTPin, 0);
+				delayMicroseconds(20);
 				gpio_set_level(RSTPin, 1);
 			}
 
