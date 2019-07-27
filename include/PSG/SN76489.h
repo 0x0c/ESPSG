@@ -13,7 +13,7 @@ namespace ESP32
 		{
 		private:
 			unsigned int tp_sn[128] = {
-				956, 902, 851, 804, 758, 716, 676, 638, 602, 568, 536, 506, 478, 451, 426, 402, 379, 358, 338, 319, 301, 284, 268, 253, 239, 225, 213, 201, 190, 179, 169, 159, 150, 142, 134, 127, 119, 113, 106, 100, 95, 89, 84, 80, 75, 71, 6, 1012, 956, 902, 851, 804, 758, 716, 676, 638, 602, 568, 536, 506, 478, 451, 426, 402, 379, 358, 338, 319, 301, 284, 268, 253, 239, 225, 213, 201, 190, 179, 169, 159, 150, 142, 134, 127, 119, 113, 106, 100, 95, 89, 84, 80, 75, 71, 67, 63, 60, 56, 53, 50, 47, 45, 42, 40, 38, 36, 34, 32, 30, 28, 27, 25, 24, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 13, 12, 11, 11, 10
+				1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1012, 956, 902, 851, 804, 758, 716, 676, 638, 602, 568, 536, 506, 478, 451, 426, 402, 379, 358, 338, 319, 301, 284, 268, 253, 239, 225, 213, 201, 190, 179, 169, 159, 150, 142, 134, 127, 119, 113, 106, 100, 95, 89, 84, 80, 75, 71, 67, 63, 60, 56, 53, 50, 47, 45, 42, 40, 38, 36, 34, 32, 30, 28, 27, 25, 24, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 13, 12, 11, 11, 10
 			};
 
 			gpio_num_t latchPin, clockPin, dataPin, WEPin, CEPin;
@@ -44,16 +44,26 @@ namespace ESP32
 			void setNote(PSG::Channel channel, uint8_t noteNumber)
 			{
 				unsigned int t = this->tp_sn[noteNumber];
-				uint8_t tonedata1 = 0x80 | (channel << 5) | (t & 0xf);
-				writeData(tonedata1);
-				uint8_t tonedata2 = (t >> 4) & 0x3f;
-				writeData(tonedata2);
+				uint8_t tonedata1 = 0x80 | (0xff & (channel << 4)) | (t & 0x0f);
+				uint8_t tonedata2 = (0xff & (t >> 4)) & 0x3f;
+				modeWrite();
+				gpio_set_level(latchPin, 0);
+				shiftOut(dataPin, clockPin, MSBFIRST, tonedata1);
+				gpio_set_level(latchPin, 1);
+				delayMicroseconds(4);
+				gpio_set_level(latchPin, 0);
+				shiftOut(dataPin, clockPin, MSBFIRST, tonedata2);
+				gpio_set_level(latchPin, 1);
+				modeInactive();
 			}
 
 			void setVolume(PSG::Channel channel, uint8_t volume)
 			{
+				if (volume == 0) {
+					volume = 0x0f;
+				}
 				uint8_t vol;
-				vol = 0x90 | (channel << 5) | ((~volume) & 0xf);
+				vol = 0x80 | ((channel * 2 + 1) << 4) | volume;
 				writeData(vol);
 			}
 
@@ -66,25 +76,25 @@ namespace ESP32
 			void modeWrite()
 			{
 				gpio_set_level(CEPin, 0);
+				delayMicroseconds(4);
 				gpio_set_level(WEPin, 0);
-				delayMicroseconds(50);
+				delayMicroseconds(4);
 			}
 
 			void modeInactive()
 			{
 				gpio_set_level(CEPin, 1);
+				delayMicroseconds(4);
 				gpio_set_level(WEPin, 1);
-				delayMicroseconds(50);
+				delayMicroseconds(4);
 			}
 
 			void writeData(uint8_t data)
 			{
 				modeWrite();
 				gpio_set_level(latchPin, 0);
-				shiftOut(dataPin, clockPin, LSBFIRST, data);
+				shiftOut(dataPin, clockPin, MSBFIRST, data);
 				gpio_set_level(latchPin, 1);
-				delayMicroseconds(100);
-				modeInactive();
 			}
 
 			void clear()
@@ -92,6 +102,7 @@ namespace ESP32
 				setVolume(PSG::Channel::Channel1, 0);
 				setVolume(PSG::Channel::Channel2, 0);
 				setVolume(PSG::Channel::Channel3, 0);
+				modeInactive();
 			}
 		};
 	}
