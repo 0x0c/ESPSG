@@ -43,19 +43,24 @@ namespace ESP32
 				}
 			}
 
-			static inline unsigned get_clock_count(void)
+			static unsigned long IRAM_ATTR micros()
 			{
-				unsigned r;
-				asm volatile("rsr %0, ccount"
-				             : "=r"(r));
-				return r;
+				return (unsigned long)(esp_timer_get_time());
 			}
 
 			static void IRAM_ATTR delayMicroseconds(uint32_t us)
 			{
-				long startCount = get_clock_count();
-				while (get_clock_count() - startCount < 160 * us) {
-					__asm__ __volatile__("nop");
+				uint32_t m = micros();
+				if (us) {
+					uint32_t e = (m + us);
+					if (m > e) { //overflow
+						while (micros() > e) {
+							asm volatile("nop");
+						}
+					}
+					while (micros() < e) {
+						asm volatile("nop");
+					}
 				}
 			}
 		};

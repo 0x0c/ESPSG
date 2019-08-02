@@ -51,6 +51,11 @@ namespace ESP32
 				writeData(0x01 + channel, (t >> 8) & 0x0f);
 			}
 
+			void setNoise(uint8_t noisePeriod)
+			{
+				writeData(0x06, noisePeriod);
+			}
+
 			void setVolume(PSG::Channel channel, uint8_t volume)
 			{
 				writeData(0x08 + channel, volume & 0x0f);

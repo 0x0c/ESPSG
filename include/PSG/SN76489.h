@@ -13,10 +13,11 @@ namespace ESP32
 		{
 		private:
 			unsigned int tp_sn[128] = {
-				1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1012, 956, 902, 851, 804, 758, 716, 676, 638, 602, 568, 536, 506, 478, 451, 426, 402, 379, 358, 338, 319, 301, 284, 268, 253, 239, 225, 213, 201, 190, 179, 169, 159, 150, 142, 134, 127, 119, 113, 106, 100, 95, 89, 84, 80, 75, 71, 67, 63, 60, 56, 53, 50, 47, 45, 42, 40, 38, 36, 34, 32, 30, 28, 27, 25, 24, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 13, 12, 11, 11, 10
+				956, 902, 851, 804, 758, 716, 676, 638, 602, 568, 536, 506, 478, 451, 426, 402, 379, 358, 338, 319, 301, 284, 268, 253, 239, 225, 213, 201, 190, 179, 169, 159, 150, 142, 134, 127, 119, 113, 106, 100, 95, 89, 84, 80, 75, 71, 6, 1012, 956, 902, 851, 804, 758, 716, 676, 638, 602, 568, 536, 506, 478, 451, 426, 402, 379, 358, 338, 319, 301, 284, 268, 253, 239, 225, 213, 201, 190, 179, 169, 159, 150, 142, 134, 127, 119, 113, 106, 100, 95, 89, 84, 80, 75, 71, 67, 63, 60, 56, 53, 50, 47, 45, 42, 40, 38, 36, 34, 32, 30, 28, 27, 25, 24, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 13, 12, 11, 11, 10
 			};
 
 			gpio_num_t latchPin, clockPin, dataPin, WEPin, CEPin;
+			const static PSG::Channel Noise = PSG::Channel::Channel4;
 
 		public:
 			SN76489(gpio_num_t latch, gpio_num_t clock, gpio_num_t data, gpio_num_t WE, gpio_num_t CE)
@@ -44,27 +45,28 @@ namespace ESP32
 			void setNote(PSG::Channel channel, uint8_t noteNumber)
 			{
 				unsigned int t = this->tp_sn[noteNumber];
-				uint8_t tonedata1 = 0x80 | (0xff & (channel << 4)) | (t & 0x0f);
-				uint8_t tonedata2 = (0xff & (t >> 4)) & 0x3f;
+
 				modeWrite();
-				gpio_set_level(latchPin, 0);
-				shiftOut(dataPin, clockPin, MSBFIRST, tonedata1);
-				gpio_set_level(latchPin, 1);
-				delayMicroseconds(4);
-				gpio_set_level(latchPin, 0);
-				shiftOut(dataPin, clockPin, MSBFIRST, tonedata2);
-				gpio_set_level(latchPin, 1);
+				uint8_t tonedata1 = 0x80 | (0xff & (channel << 4)) | (t & 0x0f);
+				writeData(tonedata1);
+				uint8_t tonedata2 = (0xff & (t >> 4)) & 0x3f;
+				writeData(tonedata2);
 				modeInactive();
 			}
 
 			void setVolume(PSG::Channel channel, uint8_t volume)
 			{
+				uint8_t shift = (uint8_t)map(volume, 0, 127, 0, 3);
+				uint8_t weight = 0;
 				if (volume == 0) {
-					volume = 0x0f;
+					weight = 0x0f;
 				}
-				uint8_t vol;
-				vol = 0x80 | ((channel * 2 + 1) << 4) | volume;
-				writeData(vol);
+				else {
+					weight = (0x01 << shift);
+				}
+				uint8_t reg = channel_to_register(channel, true) << 4;
+				uint8_t volume_bit = 0x80 | reg | weight;
+				writeData(volume_bit);
 			}
 
 			void setNoise(uint8_t fb, uint8_t f1, uint8_t f0)
@@ -76,17 +78,15 @@ namespace ESP32
 			void modeWrite()
 			{
 				gpio_set_level(CEPin, 0);
-				delayMicroseconds(4);
 				gpio_set_level(WEPin, 0);
-				delayMicroseconds(4);
+				delayMicroseconds(20);
 			}
 
 			void modeInactive()
 			{
 				gpio_set_level(CEPin, 1);
-				delayMicroseconds(4);
 				gpio_set_level(WEPin, 1);
-				delayMicroseconds(4);
+				delayMicroseconds(20);
 			}
 
 			void writeData(uint8_t data)
@@ -94,7 +94,10 @@ namespace ESP32
 				modeWrite();
 				gpio_set_level(latchPin, 0);
 				shiftOut(dataPin, clockPin, MSBFIRST, data);
+				// delayMicroseconds(100);
 				gpio_set_level(latchPin, 1);
+				delayMicroseconds(100);
+				modeInactive();
 			}
 
 			void clear()
@@ -102,7 +105,30 @@ namespace ESP32
 				setVolume(PSG::Channel::Channel1, 0);
 				setVolume(PSG::Channel::Channel2, 0);
 				setVolume(PSG::Channel::Channel3, 0);
-				modeInactive();
+				setVolume(Noise, 0);
+			}
+
+			uint8_t channel_to_register(PSG::Channel channel, bool attenuation)
+			{
+				if (channel == PSG::Channel::Channel1) {
+					return 0b00000000 + (attenuation ? 1 : 0);
+				}
+				else if (channel == PSG::Channel::Channel2) {
+					return 0b00000010 + (attenuation ? 1 : 0);
+				}
+				else if (channel == PSG::Channel::Channel3) {
+					return 0b00000100 + (attenuation ? 1 : 0);
+				}
+				else if (channel == Noise) {
+					return 0b00000110 + (attenuation ? 1 : 0);
+				}
+
+				return 0x00;
+			}
+
+			long map(long x, long in_min, long in_max, long out_min, long out_max)
+			{
+				return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 			}
 		};
 	}
