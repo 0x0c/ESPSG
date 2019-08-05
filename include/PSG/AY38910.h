@@ -10,6 +10,29 @@ namespace ESP32
 	{
 		class AY38910 : Interface
 		{
+			enum Register : uint8_t
+			{
+				ChannelFineTune = 0x00,
+				ChannelCoarseTune = 0x01,
+				ChannelA_FineTune = 0x00,
+				ChannelA_CoarseTune = 0x01,
+				ChannelB_FineTune = 0x02,
+				ChannelB_CoarseTune = 0x03,
+				ChannelC_FineTune = 0x04,
+				ChannelC_CoarseTune = 0x05,
+				NoisePeriod = 0x06,
+				MixerControl = 0x07,
+				ChannelAmplitude = 0x08,
+				ChannelA_Amplitude = 0x08,
+				ChannelB_Amplitude = 0x09,
+				ChannelC_Amplitude = 0x0a,
+				EnvelopeFineTune = 0x0b,
+				EnvelopeCoarseTune = 0x0c,
+				EnvelopeShapeCycle = 0x0d,
+				IOPortA_DataStore = 0x0e,
+				IOPortB_DataStore = 0x0f,
+			};
+
 		private:
 			gpio_num_t latchPin, clockPin, dataPin, BC1Pin, BCDIRPin, RSTPin;
 			unsigned int tp_ay[128] = {
@@ -17,6 +40,27 @@ namespace ESP32
 			};
 
 		public:
+			enum EnvelopeMode : uint8_t
+			{
+				ModeA = 0x00,
+				ModeB = 0x04,
+				ModeC = 0x08,
+				ModeD = 0x09,
+				ModeE = 0x0a,
+				ModeF = 0x0b,
+				ModeG = 0x0c,
+				ModeH = 0x0d,
+				ModeI = 0x0e,
+				ModeJ = 0x0f
+			};
+
+			enum SettingBit : uint8_t
+			{
+				ChannelA = 0x01,
+				ChannelB = 0x02,
+				ChannelC = 0x04,
+			};
+
 			AY38910(gpio_num_t latch, gpio_num_t clock, gpio_num_t data, gpio_num_t BC1, gpio_num_t BCDIR, gpio_num_t RST)
 			    : latchPin(latch)
 			    , clockPin(clock)
@@ -37,6 +81,13 @@ namespace ESP32
 				gpio_set_level(RSTPin, 0);
 				delayMicroseconds(20);
 				gpio_set_level(RSTPin, 1);
+
+				this->setNoise(0x00);
+				this->setVolume(PSG::Channel::Channel1, 0);
+				this->setVolume(PSG::Channel::Channel2, 0);
+				this->setVolume(PSG::Channel::Channel3, 0);
+
+				this->setMixerSetting(0, 0, (SettingBit::ChannelA | SettingBit::ChannelB | SettingBit::ChannelC));
 			}
 
 			bool validateChannel(uint8_t channel)
@@ -47,29 +98,36 @@ namespace ESP32
 			void setNote(PSG::Channel channel, uint8_t noteNumber)
 			{
 				unsigned int t = this->tp_ay[noteNumber];
-				writeData(0x00 + channel, t & 0xff);
-				writeData(0x01 + channel, (t >> 8) & 0x0f);
+				writeData(Register::ChannelFineTune + channel, t & 0xff);
+				writeData(Register::ChannelCoarseTune + channel, (t >> 8) & 0x0f);
 			}
 
 			void setNoise(uint8_t noisePeriod)
 			{
-				writeData(0x06, noisePeriod);
+				writeData(Register::NoisePeriod, noisePeriod);
 			}
 
 			void setVolume(PSG::Channel channel, uint8_t volume)
 			{
-				writeData(0x08 + channel, volume & 0x0f);
+				uint8_t volume_bit = (uint8_t)map(volume, 0, 127, 0, 15);
+				writeData(Register::ChannelAmplitude + channel, volume_bit);
 			}
 
-			void setEnvelope(PSG::Channel channel, uint8_t mode)
+			void setEnvelope(PSG::Channel channel, AY38910::EnvelopeMode mode)
 			{
-				writeData(0x0d, 0x08 + (mode & 0x0f));
+				writeData(Register::EnvelopeShapeCycle, mode);
 			}
 
-			void setEnvelopeTime(uint8_t envelopeTime)
+			void setEnvelopeTime(uint16_t envelopeTime)
 			{
-				writeData(0x0b, envelopeTime & 0xff);
-				writeData(0x0c, (envelopeTime >> 8) & 0xff);
+				writeData(Register::EnvelopeFineTune, envelopeTime & 0xff);
+				writeData(Register::EnvelopeCoarseTune, (envelopeTime >> 8) & 0xff);
+			}
+
+			void setMixerSetting(uint8_t inputEnabled, uint8_t noiseEnabled, uint8_t toneEnabled)
+			{
+				uint8_t data = ((~inputEnabled & 0x03) << 6) | ((~inputEnabled & 0x07) << 3) | (~toneEnabled & 0x07);
+				writeData(Register::MixerControl, data);
 			}
 
 			void latchMode()
@@ -103,12 +161,12 @@ namespace ESP32
 				shiftOut(dataPin, clockPin, MSBFIRST, address);
 				gpio_set_level(latchPin, 1);
 				latchMode();
+
 				inactive();
 				writeMode();
 				gpio_set_level(latchPin, 0);
 				shiftOut(dataPin, clockPin, MSBFIRST, data);
 				gpio_set_level(latchPin, 1);
-				inactive();
 			}
 		};
 	}

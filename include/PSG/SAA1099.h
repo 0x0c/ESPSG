@@ -72,14 +72,19 @@ namespace ESP32
 			void setVolume(PSG::Channel channel, SAA1099::OutputSide side, uint8_t volume)
 			{
 				uint8_t volL = 0xff & volume;
-				uint8_t volR = 0xff & (volume << 4);
+				volL = (uint8_t)map(volL, 0, 127, 0, 15);
+
+				uint8_t volR = (0xff & volume) >> 4;
+				volR = (uint8_t)map(volR, 0, 127, 0, 15);
+				volR = volR << 4;
+
 				switch (side) {
 					case Left:
 						writeData(channel, volL);
 					case Right:
 						writeData(channel, volR);
 					case Both:
-						writeData(channel, volume);
+						writeData(channel, (volL | volR));
 				}
 			}
 
